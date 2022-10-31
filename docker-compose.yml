@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+
+  webserver:
+    image: nginx:alpine
+    container_name: webserver
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+      - ./logs:/var/log/nginx
+      - ./www:/var/www
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+  app:
+    build: ./images/php
+    container_name: app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./www:/usr/share/nginx/html
+      - ./www:/var/www
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  db:
+    image: mysql:5.7
+    container_name: db
+    command: --init-file /tmp/init.sql
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./images/mysql/init.sql:/tmp/init.sql
+    environment:
+      MYSQL_ROOT_PASSWORD: 5311
+    networks:
+      - app-network
+    ports:
+      - 3305:3306
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    depends_on:
+      - db
+    container_name: pma
+    ports:
+      - "8181:80"
+    environment:
+      - PMA_HOST=db
+      - PMA_USER=root
+      - PMA_PASSWORD=5311
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
